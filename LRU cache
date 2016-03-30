@@ -1,0 +1,54 @@
+LRU Cache算法实现（leetcode）
+
+##题意
+实现一个LRU cache类，使得在我们需要获取一个key的值时，如果cache中有，那么直接返回值，否则就返回-1；同时我们还可以设置一个cache的值，这个主要是在我们出现cache miss的时候，我们需要替换其中的项或者需要从主存中载入对应的项。
+##思路
+LRU，最近最少使用，也就说在出现cache满的时候，替换原则就是替换最近最少使用的项。类中必须体现出这个原则，那么我们应该如何来做呢？
+
+首先我们需要一个数据结构来抽象cache结构，用于存储key和value，自然就需要使用map结构，那么是使用红黑树还是hash table呢，其实都可以。这里选择unordered_map<key,value>.如果这么存储，那么出现替换需求的时候，如何记录当前最近最少使用的项呢，所以，我们还需要一个数据结构来记录最近的使用项目。每次一个项被使用后，都应该提升到前面，保证不会被替换，我们选取一个双向链表。每次一个项被使用后，都提升到链表的头部，每次替换的时候都是从链表的尾端移除。下面是实现代码。
+##实现
+
+```
+class LRUCache{
+public:
+    LRUCache(int capacity):capacity(capacity) {
+        
+    }
+    //获取一个项，直接从map中通过key查找，是否存在这个键，如果没有，
+    //那么说明cache中没有缓存，直接返回-1.如果找到了，说明cache中有
+    //这时候还需要完成的工作就是将其在链表中的位置移动到最前端。
+    int get(int key) {
+        auto it = caches.find(key);
+        if(it==caches.end())
+            return -1;
+        insert(it);
+        return it->second.first;
+    }
+    //set方法就是处理替换的情况，如果已经满了，那么就需要替换，如果没
+    //有，直接设置对应的项就可以。
+    void set(int key, int value) {
+        auto it = caches.find(key);
+        if(it!=caches.end())
+            insert(it);
+        else {
+            if (caches.size() == capacity) {
+                caches.erase(recently_use.back());
+                recently_use.pop_back();
+            }
+            recently_use.push_front(key);
+        }
+        caches[key] = { value, recently_use.begin() };
+    }
+private:
+    list<int> recently_use;
+    unordered_map<int,pair<int,list<int>::iterator>> caches;
+    void insert(unordered_map<int,pair<int,list<int>::iterator>>::iterator it){
+        int key = it->first;
+        list<int>::iterator used_it = it->second.second;
+        recently_use.erase(used_it);
+        recently_use.push_front(key);
+        it->second.second = recently_use.begin();
+    }
+    int capacity;
+};
+```
